@@ -10,9 +10,12 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: MyHomePage(),
+      home: ApiProvider(
+        api: Api(),
+        child: const MyHomePage(),
+      ),
     );
   }
 }
@@ -25,117 +28,76 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  @override
-  Widget build(BuildContext context) {
-    final ContactBook contactBook = ContactBook();
-    return Scaffold(
-      body: ValueListenableBuilder(
-        valueListenable: contactBook,
-        builder: (context, value, child) {
-          final List<Contact> contacts = value;
-          return ListView.builder(
-            itemCount: contacts.length,
-            itemBuilder: (context, index) {
-              Contact contact = contacts[index];
-              return Dismissible(
-                key: ValueKey(contact.id),
-                onDismissed: (direction) {
-                  contactBook.remove(contact: contact);
-                },
-                child: ListTile(
-                  title: Text(contact.name),
-                ),
-              );
-            },
-          );
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          await Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (context) => const NewContactPage(),
-            ),
-          );
-        },
-        child: const Icon(Icons.add),
-      ),
-    );
-  }
-}
-
-class NewContactPage extends StatefulWidget {
-  const NewContactPage({super.key});
-
-  @override
-  State<NewContactPage> createState() => _NewContactPageState();
-}
-
-class _NewContactPageState extends State<NewContactPage> {
-  final TextEditingController _contactNameController = TextEditingController();
-
-  @override
-  void dispose() {
-    _contactNameController.dispose();
-    super.dispose();
-  }
+  ValueKey _textKey = const ValueKey<String?>(null);
 
   @override
   Widget build(BuildContext context) {
-    final ContactBook contactBook = ContactBook();
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Add a new contact"),
+        title: Text(
+          ApiProvider.of(context).api.dateAndTime ?? "",
+        ),
       ),
-      body: Column(
-        children: [
-          TextField(
-            controller: _contactNameController,
-            decoration: const InputDecoration(hintText: "Enter contact name"),
+      body: SizedBox.expand(
+        child: GestureDetector(
+          onTap: () async {
+            final Api api = ApiProvider.of(context).api;
+            final String dateAndTime = await api.getDateAndTime();
+            setState(() {
+              _textKey = ValueKey(dateAndTime);
+            });
+          },
+          child: Container(
+            color: Colors.white,
+            child: DateTimeWidget(key: _textKey),
           ),
-          ElevatedButton(
-            onPressed: () {
-              if (_contactNameController.text.isNotEmpty) {
-                Contact contact = Contact(name: _contactNameController.text);
-                contactBook.add(contact: contact);
-                Navigator.of(context).pop();
-              }
-            },
-            child: const Text("Add contact"),
-          ),
-        ],
+        ),
       ),
     );
   }
 }
 
-class Contact {
-  final String id;
-  final String name;
+class DateTimeWidget extends StatelessWidget {
+  const DateTimeWidget({super.key});
 
-  Contact({required this.name}) : id = const Uuid().v4();
+  @override
+  Widget build(BuildContext context) {
+    final Api api = ApiProvider.of(context).api;
+    return Text(api.dateAndTime ?? "Tap on screen to fetch date and time");
+  }
 }
 
-class ContactBook extends ValueNotifier<List<Contact>> {
-  ContactBook._sharedInstance() : super([]);
+class ApiProvider extends InheritedWidget {
+  final Api api;
+  final String uuid;
 
-  static final ContactBook _shared = ContactBook._sharedInstance();
+  ApiProvider({
+    super.key,
+    required this.api,
+    required Widget child,
+  })  : uuid = const Uuid().v4(),
+        super(child: child);
 
-  factory ContactBook() => _shared;
-
-  int get length => value.length;
-
-  void add({required Contact contact}) {
-    value.add(contact);
-    notifyListeners();
+  static ApiProvider of(BuildContext context) {
+    return context.dependOnInheritedWidgetOfExactType<ApiProvider>()!;
   }
 
-  void remove({required Contact contact}) {
-    value.remove(contact);
-    notifyListeners();
+  @override
+  bool updateShouldNotify(ApiProvider oldWidget) {
+    return uuid != oldWidget.uuid;
   }
+}
 
-  Contact? contact({required int atIndex}) {
-    return value.length > atIndex ? value[atIndex] : null;
+class Api {
+  String? dateAndTime;
+
+  Future<String> getDateAndTime() async {
+    return Future.delayed(
+      const Duration(seconds: 1),
+      () => DateTime.now().toIso8601String(),
+    ).then((value) {
+      dateAndTime = value;
+      return value;
+    });
   }
 }
