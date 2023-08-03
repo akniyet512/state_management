@@ -1,5 +1,6 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
-import 'package:uuid/uuid.dart';
 
 void main() {
   runApp(const MyApp());
@@ -10,12 +11,9 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return const MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: ApiProvider(
-        api: Api(),
-        child: const MyHomePage(),
-      ),
+      home: MyHomePage(),
     );
   }
 }
@@ -28,76 +26,127 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  ValueKey _textKey = const ValueKey<String?>(null);
-
+  MaterialColor color1 = Colors.yellow;
+  MaterialColor color2 = Colors.red;
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: Text(
-          ApiProvider.of(context).api.dateAndTime ?? "",
-        ),
-      ),
-      body: SizedBox.expand(
-        child: GestureDetector(
-          onTap: () async {
-            final Api api = ApiProvider.of(context).api;
-            final String dateAndTime = await api.getDateAndTime();
-            setState(() {
-              _textKey = ValueKey(dateAndTime);
-            });
-          },
-          child: Container(
-            color: Colors.white,
-            child: DateTimeWidget(key: _textKey),
-          ),
+      body: AvailableColorsWidget(
+        color1: color1,
+        color2: color2,
+        child: Column(
+          children: [
+            Row(
+              children: [
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      color1 = colors.getRandomElement();
+                    });
+                  },
+                  child: const Text("Change color 1"),
+                ),
+                TextButton(
+                  onPressed: () {
+                    setState(() {
+                      color2 = colors.getRandomElement();
+                    });
+                  },
+                  child: const Text("Change color 2"),
+                ),
+              ],
+            ),
+            const ColorWidget(color: AvailableColors.one),
+            const ColorWidget(color: AvailableColors.two),
+          ],
         ),
       ),
     );
   }
 }
 
-class DateTimeWidget extends StatelessWidget {
-  const DateTimeWidget({super.key});
+class ColorWidget extends StatelessWidget {
+  final AvailableColors color;
+
+  const ColorWidget({
+    super.key,
+    required this.color,
+  });
 
   @override
   Widget build(BuildContext context) {
-    final Api api = ApiProvider.of(context).api;
-    return Text(api.dateAndTime ?? "Tap on screen to fetch date and time");
+    switch (color) {
+      case AvailableColors.one:
+        break;
+      case AvailableColors.two:
+        break;
+    }
+    final AvailableColorsWidget? provider =
+        AvailableColorsWidget.of(context, color);
+
+    return Container(
+      height: 100,
+      color: color == AvailableColors.one ? provider?.color1 : provider?.color2,
+    );
   }
 }
 
-class ApiProvider extends InheritedWidget {
-  final Api api;
-  final String uuid;
+class AvailableColorsWidget extends InheritedModel<AvailableColors> {
+  final MaterialColor color1;
+  final MaterialColor color2;
 
-  ApiProvider({
-    super.key,
-    required this.api,
+  const AvailableColorsWidget({
+    Key? key,
+    required this.color1,
+    required this.color2,
     required Widget child,
-  })  : uuid = const Uuid().v4(),
-        super(child: child);
+  }) : super(
+          key: key,
+          child: child,
+        );
 
-  static ApiProvider of(BuildContext context) {
-    return context.dependOnInheritedWidgetOfExactType<ApiProvider>()!;
+  static AvailableColorsWidget? of(
+      BuildContext context, AvailableColors aspect) {
+    return InheritedModel.inheritFrom<AvailableColorsWidget>(
+      context,
+      aspect: aspect,
+    );
   }
 
   @override
-  bool updateShouldNotify(ApiProvider oldWidget) {
-    return uuid != oldWidget.uuid;
+  bool updateShouldNotify(covariant AvailableColorsWidget oldWidget) {
+    return color1 != oldWidget.color1 || color2 != oldWidget.color2;
+  }
+
+  @override
+  bool updateShouldNotifyDependent(covariant AvailableColorsWidget oldWidget,
+      Set<AvailableColors> dependencies) {
+    if (dependencies.contains(AvailableColors.one) &&
+        color1 != oldWidget.color1) {
+      return true;
+    }
+    if (dependencies.contains(AvailableColors.two) &&
+        color2 != oldWidget.color2) {
+      return true;
+    }
+    return false;
   }
 }
 
-class Api {
-  String? dateAndTime;
+enum AvailableColors { one, two }
 
-  Future<String> getDateAndTime() async {
-    return Future.delayed(
-      const Duration(seconds: 1),
-      () => DateTime.now().toIso8601String(),
-    ).then((value) {
-      dateAndTime = value;
-      return value;
-    });
-  }
+final List<MaterialColor> colors = [
+  Colors.blue,
+  Colors.red,
+  Colors.yellow,
+  Colors.orange,
+  Colors.purple,
+  Colors.cyan,
+  Colors.brown,
+  Colors.amber,
+  Colors.deepPurple,
+];
+
+extension RandomElement<T> on Iterable<T> {
+  T getRandomElement() => elementAt(Random().nextInt(length));
 }
