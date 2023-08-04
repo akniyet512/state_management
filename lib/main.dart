@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 
 void main() {
@@ -18,135 +16,88 @@ class MyApp extends StatelessWidget {
   }
 }
 
-class MyHomePage extends StatefulWidget {
+class MyHomePage extends StatelessWidget {
   const MyHomePage({super.key});
 
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  MaterialColor color1 = Colors.yellow;
-  MaterialColor color2 = Colors.red;
-  @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: AvailableColorsWidget(
-        color1: color1,
-        color2: color2,
-        child: Column(
-          children: [
-            Row(
+      appBar: AppBar(
+        title: const Text("Home Page"),
+      ),
+      body: SliderInheritedNotifier(
+        sliderData: sliderData,
+        child: Builder(
+          builder: (context) {
+            return Column(
               children: [
-                TextButton(
-                  onPressed: () {
-                    setState(() {
-                      color1 = colors.getRandomElement();
-                    });
+                Slider(
+                  value: SliderInheritedNotifier.of(context),
+                  onChanged: (value) {
+                    sliderData.value = value;
                   },
-                  child: const Text("Change color 1"),
                 ),
-                TextButton(
-                  onPressed: () {
-                    setState(() {
-                      color2 = colors.getRandomElement();
-                    });
-                  },
-                  child: const Text("Change color 2"),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Opacity(
+                        opacity: SliderInheritedNotifier.of(context),
+                        child: Container(
+                          color: Colors.yellow,
+                          height: 200,
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: Opacity(
+                        opacity: SliderInheritedNotifier.of(context),
+                        child: Container(
+                          color: Colors.blue,
+                          height: 200,
+                        ),
+                      ),
+                    ),
+                  ],
                 ),
               ],
-            ),
-            const ColorWidget(color: AvailableColors.one),
-            const ColorWidget(color: AvailableColors.two),
-          ],
+            );
+          },
         ),
       ),
     );
   }
 }
 
-class ColorWidget extends StatelessWidget {
-  final AvailableColors color;
+final SliderData sliderData = SliderData();
 
-  const ColorWidget({
+class SliderInheritedNotifier extends InheritedNotifier<SliderData> {
+  const SliderInheritedNotifier({
     super.key,
-    required this.color,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    switch (color) {
-      case AvailableColors.one:
-        break;
-      case AvailableColors.two:
-        break;
-    }
-    final AvailableColorsWidget? provider =
-        AvailableColorsWidget.of(context, color);
-
-    return Container(
-      height: 100,
-      color: color == AvailableColors.one ? provider?.color1 : provider?.color2,
-    );
-  }
-}
-
-class AvailableColorsWidget extends InheritedModel<AvailableColors> {
-  final MaterialColor color1;
-  final MaterialColor color2;
-
-  const AvailableColorsWidget({
-    Key? key,
-    required this.color1,
-    required this.color2,
     required Widget child,
+    required SliderData sliderData,
   }) : super(
-          key: key,
           child: child,
+          notifier: sliderData,
         );
 
-  static AvailableColorsWidget? of(
-      BuildContext context, AvailableColors aspect) {
-    return InheritedModel.inheritFrom<AvailableColorsWidget>(
-      context,
-      aspect: aspect,
-    );
-  }
-
-  @override
-  bool updateShouldNotify(covariant AvailableColorsWidget oldWidget) {
-    return color1 != oldWidget.color1 || color2 != oldWidget.color2;
-  }
-
-  @override
-  bool updateShouldNotifyDependent(covariant AvailableColorsWidget oldWidget,
-      Set<AvailableColors> dependencies) {
-    if (dependencies.contains(AvailableColors.one) &&
-        color1 != oldWidget.color1) {
-      return true;
-    }
-    if (dependencies.contains(AvailableColors.two) &&
-        color2 != oldWidget.color2) {
-      return true;
-    }
-    return false;
+  static double of(BuildContext context) {
+    return context
+            .dependOnInheritedWidgetOfExactType<SliderInheritedNotifier>()
+            ?.notifier
+            ?.value ??
+        0;
   }
 }
 
-enum AvailableColors { one, two }
+class SliderData extends ChangeNotifier {
+  double _value = 0;
 
-final List<MaterialColor> colors = [
-  Colors.blue,
-  Colors.red,
-  Colors.yellow,
-  Colors.orange,
-  Colors.purple,
-  Colors.cyan,
-  Colors.brown,
-  Colors.amber,
-  Colors.deepPurple,
-];
+  double get value => _value;
 
-extension RandomElement<T> on Iterable<T> {
-  T getRandomElement() => elementAt(Random().nextInt(length));
+  set value(double newValue) {
+    if (newValue != _value) {
+      _value = newValue;
+      notifyListeners();
+    }
+  }
 }
